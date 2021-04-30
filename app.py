@@ -11,9 +11,6 @@ from ibeacon.resources import *
 from ibeacon.services import * 
 
 
-##########[ Settings & Data ]##################################################
-
-
 application = Flask(
     __name__,
     static_url_path='/assets',
@@ -22,9 +19,6 @@ application = Flask(
 api = Api(application)
 CORS(application)
 application.config['PROPAGATE_EXCEPTIONS'] = True
-
-
-#########[ Flask Application setup ]###########################################
 
 
 @application.teardown_request
@@ -68,35 +62,21 @@ def status():
     })
 
 
-#########[ Flask Application resources ]#######################################
+def _add_application_resources():
+    info("Adding resources to application")
+    api.add_resource(IBeaconScannerStartResource, '/ibeacon_scanner/start')
+    api.add_resource(IBeaconScannerStopResource, '/ibeacon_scanner/stop')
+    api.add_resource(IBeaconScannerSettingsResource, '/ibeacon_scanner/settings')
+    api.add_resource(IBeaconScannerBeaconsDataResource, '/ibeacon_scanner/beacons_data')
 
 
-api.add_resource(IBeaconStartScannerResource, '/ibeacons_scanner/start')
-api.add_resource(IBeaconStopScannerResource, '/ibeacons_scanner/stop')
-api.add_resource(IBeaconScannerStatusResource, '/ibeacons_scanner/status')
-api.add_resource(IBeaconScannerSettingsResource, '/ibeacons_scanner/settings')
-api.add_resource(IBeaconScannerBeaconsResource, '/ibeacons_scanner/beacons/<data>')
-api.add_resource(IBeaconScannerInfoResource, '/ibeacons_scanner/info/<data>')
-
-
-#########[ Main code ]#########################################################
-
-
-def ibeacon_onchange_callback(changes_data):
-    info(f"Calling changes callback with data: {changes_data}")
-
-
-def init_app():
-    print ("Welcome to Beacons Scanner - Powered by Goto IoT")
+def init_application():
+    info("Welcome to BLE Service - Powered by Goto IoT")
+    _add_application_resources()
     ibeacon_init_scanner()
-    ibeacon_set_onchange_callback(ibeacon_onchange_callback)
 
 
-init_app()
+init_application()
 
 if __name__ == "__main__":
-    application.run(
-        host="0.0.0.0", 
-        port=config.PORT, 
-        debug=True
-        )
+    application.run(host="0.0.0.0", port=config.PORT, debug=True)

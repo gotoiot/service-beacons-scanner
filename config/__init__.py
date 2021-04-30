@@ -3,56 +3,50 @@ import sys
 import json
 
 
-# try to read configs from env file
 PORT = os.getenv("PORT", 5000)
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
-LOG_FORMAT = os.getenv('LOG_FORMAT', '[%(levelname)s] - [%(asctime)s] - %(message)s')
-DB_CONFIG = os.getenv('DB_CONFIG', '/app/db/config.json')
-# load data from stored file
-stored_data = json.loads(open(DB_CONFIG).read())
-# set attributes dynamically
-_config_module = sys.modules[__name__]
+LOG_FORMAT = os.getenv('LOG_FORMAT', '[%(levelname)s] - %(message)s')
+CONFIG_FILEPATH = os.getenv('CONFIG_FILEPATH', '/app/db/config.json')
+
+
+def _get_this_module():
+    return sys.modules[__name__]
 
 
 def _set_dynamic_module_attrs(dynamic_attrs):
     for key, value in dynamic_attrs.items():
-        setattr(_config_module, key, value)
+        setattr(_get_this_module(), key, value)
 
 
-def read_db_config_data():
-    return json.loads(open(DB_CONFIG).read())
+def read_config_file():
+    return json.loads(open(CONFIG_FILEPATH).read())
 
 
-def write_db_config_data(**kwargs):
-    config_data = read_db_config_data()
+def write_config_file(**kwargs):
+    config_data = read_config_file()
     for key in config_data:
         if key in kwargs:
             config_data[key] = kwargs[key]
     try:
-        with open(DB_CONFIG, 'w') as db_config:
-            json.dump(
-                config_data, 
-                db_config, 
-                ensure_ascii=False, 
-                indent=4
-                )
-        _set_dynamic_module_attrs(config_data)
-        print("Updated DB_CONFIG with new data")
+        with open(CONFIG_FILEPATH, 'w') as config_file:
+            json.dump(config_data, config_file, ensure_ascii=False, indent=4)
+            _set_dynamic_module_attrs(config_data)
+            print("Updated CONFIG_FILE with new data")
     except:
-        print("Impossible to update DB_CONFIG")
+        print("Impossible to update CONFIG_FILE")
     return config_data
 
 
 def show_current_config():
-    config_data = read_db_config_data()
+    config_data = read_config_file()
     variables_to_show = list(config_data.keys()) + [
         'PORT', 
         'LOG_LEVEL', 
         'DB_CONFIG',
         ]
     for key in sorted(variables_to_show):
-        print(f"{key}={getattr(_config_module, key)}")
+        print(f"{key}={getattr(_get_this_module(), key)}")
 
 
 # once the module code is loaded, sets dynamic attrs
-_set_dynamic_module_attrs(read_db_config_data())
+_set_dynamic_module_attrs(read_config_file())

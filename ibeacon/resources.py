@@ -2,23 +2,21 @@
 from flask import request
 from flask_restful import Resource
 
+from config import write_config_file
 from log import error, warn, info, debug
 from ibeacon.services import *
 
 
-class IBeaconStartScannerResource(Resource):
+class IBeaconScannerStartResource(Resource):
 
     def post(self):
-        fake_scan = False
-        if 'fake_scan' in request.json and isinstance(request.json['fake_scan'], bool):
-            fake_scan = request.json['fake_scan']
-        ibeacon_start_scanner(fake_scan=fake_scan)
+        ibeacon_start_scanner()
         return {
             'status': 'ok'
         }
 
 
-class IBeaconStopScannerResource(Resource):
+class IBeaconScannerStopResource(Resource):
 
     def post(self):
         ibeacon_stop_scanner()
@@ -26,32 +24,21 @@ class IBeaconStopScannerResource(Resource):
             'status': 'ok'
         }
 
-        
-class IBeaconScannerStatusResource(Resource):
 
-    def get(self):
-        return ibeacon_get_scanner_status()
-
-    def post(self):
-        return ibeacon_set_scanner_status(**request.json)
-
-        
 class IBeaconScannerSettingsResource(Resource):
 
     def get(self):
         return ibeacon_get_scanner_settings()
 
     def post(self):
-        return ibeacon_set_scanner_settings(**request.json)
+        ibeacon_update_scanner_behaviour(**request.json)
+        config_data = ibeacon_get_scanner_settings(config_notation=True)
+        write_config_file(**config_data)
+        return ibeacon_get_scanner_settings()
 
         
-class IBeaconScannerBeaconsResource(Resource):
+class IBeaconScannerBeaconsDataResource(Resource):
 
-    def get(self, data):
-        return ibeacon_get_read_beacons_info()
+    def get(self):
+        return ibeacon_get_beacons_data()
 
-        
-class IBeaconScannerInfoResource(Resource):
-
-    def get(self, data):
-        return ibeacon_get_scanner_full_info()
