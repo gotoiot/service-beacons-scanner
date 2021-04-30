@@ -1,18 +1,7 @@
 #!/usr/bin/python
-"""
-Organization: Goto IoT (https://github.com/gotoiot)
-Year: 2021
-Authors:
-    - Agustin Bassi (https://github.com/agustinBassi)
-Licence: MIT
-"""
-
-import logging
-import subprocess
 import time
 from threading import Thread
 import json
-import ast
 
 from beacontools import BeaconScanner
 from beacontools import IBeaconFilter
@@ -24,6 +13,7 @@ DEFAULT_SCAN_TICK      = 3
 DEFAULT_BEACONS_FILTER = "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee"
 MIN_SCAN_TICK          = 1
 MAX_SCAN_TICK          = 10
+
 _ibeacons_scanner      = None
 
 
@@ -37,6 +27,13 @@ class _IBeacon:
         self.minor = minor
         self.tx_power = tx_power
         self.rssi = rssi		
+
+    def hash(self):
+        return hash(
+           str(self.mac_address) + 
+           str(self.major) +
+           str(self.minor)
+        )
 
     def __repr__(self):
         return f"IBeacon(" + \
@@ -55,13 +52,6 @@ class _IBeacon:
 
     def __lt__(self, other):
          return other.rssi < self.rssi
-
-    def hash(self):
-        return hash(
-           str(self.mac_address) + 
-           str(self.major) +
-           str(self.minor)
-        )
 
 
 class _IBeaconsScanner:
@@ -103,6 +93,12 @@ class _IBeaconsScanner:
         info("Setting changes callback")
         self._onchange_callback = callback
 
+    def get_scanner_settings(self):
+        return {
+            'uuid_filter': self._uuid_filter,
+            'scan_tick': self._scan_tick,
+        }
+
     def set_scanner_settings(self, **kwargs):
         if not any(k in kwargs for k in ['uuid_filter', 'scan_tick']):
             warn(f"Invalids configs for ibeacon scanner: {kwargs}")
@@ -119,23 +115,9 @@ class _IBeaconsScanner:
                 self._scan_tick = kwargs["scan_tick"]
             debug("Updated 'scan_tick' for ibeacon_scanner")
 
-    def get_scanner_settings(self):
-        return {
-            'uuid_filter': self._uuid_filter,
-            'scan_tick': self._scan_tick,
-        }
-
-    def get_read_beacons_info(self):
-        return {
-            'nearest_beacon' : vars(self._last_nearest_beacon),
-            'last_nearest_beacon' : vars(self._last_nearest_beacon),
-            'beacons_list' : [vars(b) for b in self._beacons_list],
-        }
-
     def get_scanner_status(self):
-        status = 'running' if self._run_flag else 'stopped'
         return {
-            'status': status,
+            'status': 'running' if self._run_flag else 'stopped',
         }
 
     def set_scanner_status(self, **kwargs):
@@ -147,11 +129,19 @@ class _IBeaconsScanner:
                 self.start(fake_scan=fake_scan)
             if kwargs['status'] == 'stop':
                 self.stop()
+        return self.get_scanner_status()
 
-    def get_full_scanner_info(self, **kwargs):
+    def get_read_beacons_info(self):
+        return {
+            'nearest_beacon' : vars(self._nearest_beacon) if self._nearest_beacon else None,
+            'last_nearest_beacon' : vars(self._last_nearest_beacon) if self._last_nearest_beacon else None,
+            'beacons_list' : [vars(b) for b in self._beacons_list] if self._beacons_list else None,
+        }
+
+    def get_scanner_full_info(self, **kwargs):
         full_data = self.get_scanner_settings()
         full_data.update(self.get_scanner_status())
-        full_data.update(self.get_read_ibeacons_info())
+        full_data.update(self.get_read_beacons_info())
         return full_data
 
     def _scan(self):
@@ -178,7 +168,7 @@ class _IBeaconsScanner:
                 self._last_nearest_beacon = self._nearest_beacon
                 self._nearest_beacon = None
                 info("No beacons found in this scan")
-            if self._check_if_nearest_beacon_changes():
+            if self._is_nearest_beacon_changes():
                 self._invoke_changes_callback()
 
     def _scan_fake(self):
@@ -199,10 +189,10 @@ class _IBeaconsScanner:
                 self._last_nearest_beacon = self._nearest_beacon
                 self._nearest_beacon = None
                 warn("No beacons found in this scan")
-            if self._check_if_nearest_beacon_changes():
+            if self._is_nearest_beacon_changes():
                 self._invoke_changes_callback()
 
-    def _check_if_nearest_beacon_changes(self):
+    def _is_nearest_beacon_changes(self):
         if not self._nearest_beacon and not self._last_nearest_beacon:
             return False
         if not self._nearest_beacon or not self._last_nearest_beacon:
@@ -255,11 +245,11 @@ def ibeacon_stop_scanner():
 
 
 def ibeacon_get_scanner_status():
-    _ibeacons_scanner.get_scanner_status()
+    return _ibeacons_scanner.get_scanner_status()
 
 
 def ibeacon_set_scanner_status(**kwargs):
-    _ibeacons_scanner.set_scanner_status(**kwargs)
+    return _ibeacons_scanner.set_scanner_status(**kwargs)
 
 
 def ibeacon_set_onchange_callback(callback=None):
@@ -277,4 +267,7 @@ def ibeacon_set_scanner_settings(**kwargs):
 def ibeacon_get_read_beacons_info():
     return _ibeacons_scanner.get_read_beacons_info()
 
+
+def ibeacon_get_scanner_full_info():
+    return _ibeacons_scanner.get_scanner_full_info()
     

@@ -1,0 +1,69 @@
+@prefix = http://localhost:5000
+
+### Start the ibeacon scanner
+
+POST {{prefix}}/ibeacons_scanner/start
+Content-Type: application/json
+
+{
+    "fake_scan": false
+}
+
+### Stop the ibeacon scanner
+
+POST {{prefix}}/ibeacons_scanner/stop
+Content-Type: application/json
+
+{
+
+}
+
+### Get ibeacon scanner status
+
+GET {{prefix}}/ibeacons_scanner/status
+
+### Start the ibeacon scanner by status resource
+
+@fake_scan = false
+POST {{prefix}}/ibeacons_scanner/stop
+Content-Type: application/json
+
+{
+    "status": "start",
+    "fake_scan": {{fake_scan}}
+}
+
+### Stop the ibeacon scanner by status resource
+
+POST {{prefix}}/ibeacons_scanner/stop
+Content-Type: application/json
+
+{
+    "status": "stop",
+}
+
+### Get ibeacon scanner settings
+
+GET {{prefix}}/ibeacons_scanner/settings
+
+### Set ibeacon scanner settings
+
+POST {{prefix}}/ibeacons_scanner/settings
+Content-Type: application/json
+
+{
+    "uuid_filter": "ABC123",
+    "scan_tick": 5
+}
+
+### Get ibeacon scanner read beacons data. Can be "all", "nearest", "last", "list"
+
+@beacons_info = all
+
+GET {{prefix}}/ibeacons_scanner/beacons/{{beacons_info}}
+
+### Get ibeacon scanner info. Can be "all", "status", "settings", "beacons"
+
+@scanner_info = all
+
+GET {{prefix}}/ibeacons_scanner/info/{{scanner_info}}

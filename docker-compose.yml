@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  beacons-scanner:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - env
+    volumes:
+      - ./_storage:/app/db
+    expose:
+      - "5000"
+    ports:
+      - "5000:5000"
+    network_mode:           host
+    
