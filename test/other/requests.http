@@ -35,7 +35,7 @@ Content-Type: application/json
 {
     "uuid_filter": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
     "scan_tick": 3,
-    "run_flag": false,
+    "run_flag": true,
     "fake_scan": true
 }
 
