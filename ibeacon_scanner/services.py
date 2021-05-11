@@ -11,7 +11,7 @@ from comms.http import send_http_post_request
 from config import IBEACON_MIN_SCAN_TICK, IBEACON_MAX_SCAN_TICK, IBEACON_RUN_FLAG, \
     IBEACON_SCAN_TICK, IBEACON_UUID_FILTER, IBEACON_FAKE_SCAN, IBEACON_HTTP_ONCHANGE_CALLBACK_URL
 
-_ibeacons_scanner      = None
+_ibeacons_scanner = None
 
 
 class _IBeacon:
@@ -74,7 +74,7 @@ class _IBeaconsScanner:
             self.start()
 
     def start(self):
-        debug(f"start - run_flag: {self._run_flag}")
+        self._show_debug_data("start")
         if not self._run_flag:
             self._run_flag = True
             info(f"Starting iBeaconScanner: {self.get_scanner_settings()}")
@@ -85,11 +85,12 @@ class _IBeaconsScanner:
             self._scan_thread.start()
 
     def stop(self):
-        debug(f"stop - run_flag: {self._run_flag}")
+        self._show_debug_data("stop")
         if self._run_flag:
             self._run_flag = False
-            info("Stopping iBeacons scanner")
-            self._scan_thread.join(timeout=1.0)
+            info("Stopping IBeaconScanner")
+            self._scan_thread.join(timeout=float(IBEACON_MAX_SCAN_TICK))
+            info("IBeaconScanner stopped")
 
     def get_scanner_settings(self):
         return {
@@ -132,7 +133,6 @@ class _IBeaconsScanner:
         if 'run_flag' in kwargs and isinstance(kwargs['run_flag'], bool):
             self.start() if kwargs['run_flag'] else self.stop()
 
-
     def _scan(self):
         def _scans_callback(bt_addr, rssi, packet, additional_info):
             beacon = _IBeacon(bt_addr, packet.uuid, packet.major, packet.minor, packet.tx_power, rssi)
@@ -140,7 +140,7 @@ class _IBeaconsScanner:
                 self._beacons_list.append(beacon)
         
         while(self._run_flag):
-            debug(f"scan - run_flag: {self._run_flag}")
+            self._show_debug_data("_scan")
             self._beacons_list.clear()
             beaconstools_scanner = BeaconScanner(
                 _scans_callback, 
@@ -160,11 +160,12 @@ class _IBeaconsScanner:
                 info("No beacons found in this scan")
             if self._is_nearest_beacon_changes():
                 self._invoke_onchange_callbacks()
+        info(f"Finished scan_fake execution")
 
     def _scan_fake(self):
         import random
         while(self._run_flag):
-            debug(f"scan_fake - run_flag: {self._run_flag}")
+            self._show_debug_data("_scan_fake")
             self._beacons_list.clear()
             self._beacons_list.append(_IBeacon("11:11:11", IBEACON_UUID_FILTER, 11, 1, -50, random.randint(1, 100) * -1))
             self._beacons_list.append(_IBeacon("22:22:22", IBEACON_UUID_FILTER, 11, 2, -50, random.randint(1, 100) * -1))
@@ -181,6 +182,10 @@ class _IBeaconsScanner:
                 warn("No beacons found in this scan")
             if self._is_nearest_beacon_changes():
                 self._invoke_onchange_callbacks()
+        info(f"Finished scan_fake execution")
+
+    def _show_debug_data(self, fn):
+        debug(f"DEBUG_DATA - fn: {fn}, run_flag: {self._run_flag}, instance: {id(self)}, scan_thread: {self._scan_thread}")
 
     def _is_nearest_beacon_changes(self):
         if not self._nearest_beacon and not self._last_nearest_beacon:
@@ -198,8 +203,8 @@ class _IBeaconsScanner:
             try:
                 send_http_post_request(url=url, data=data)
                 info(f"Called http callback at '{self._http_onchange_callback_url}' succesfully")
-            except:
-                error(f"While calling http callback at '{self._http_onchange_callback_url}'")
+            except Exception as e:
+                error(f"While calling http callback at '{self._http_onchange_callback_url}'. Error: '{e}'")
 
     def __repr__(self):
         return f"IBeaconScanner(" + \
@@ -244,6 +249,17 @@ def _get_scanner_settings_as_config_keys():
     }
 
 
+def _ibeacon_scanner_onchange_callback(data):
+    if IBEACON_HTTP_ONCHANGE_CALLBACK_URL:
+        url = IBEACON_HTTP_ONCHANGE_CALLBACK_URL
+        data = json.dumps(data)
+        try:
+            send_http_post_request(url=url, data=data)
+            info(f"Called http callback at '{url}' succesfully")
+        except Exception as e:
+            error(f"While calling http callback at '{url}'. Error: '{e}'")
+
+
 def ibeacon_init_scanner():
     global _ibeacons_scanner
     scanner_settings = _get_scanner_settings_from_config()
@@ -251,7 +267,6 @@ def ibeacon_init_scanner():
 
 
 def ibeacon_start_scanner():
-    debug("ibeacon_start_scanner")
     _ibeacons_scanner.start()
 
 

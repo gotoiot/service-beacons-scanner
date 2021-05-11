@@ -1,3 +1,4 @@
+ENV=dev
 PORT=5000
 LOG_LEVEL=DEBUG
-CONFIG_FILEPATH=/app/db/config.json
+LOCAL_SETTINGS_FILE=/app/_service_storage/settings.json

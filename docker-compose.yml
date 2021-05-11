@@ -8,10 +8,10 @@ services:
     env_file:
       - env
     volumes:
-      - ./_storage:/app/db
+      - ./_service_storage:/app/_service_storage
     expose:
       - "5000"
     ports:
       - "5000:5000"
-    network_mode:           host
+    network_mode: host
     

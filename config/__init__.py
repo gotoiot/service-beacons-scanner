@@ -1,52 +1,107 @@
 import os
 import sys
 import json
+import requests
 
 
-PORT = os.getenv("PORT", 5000)
+ENV = os.getenv('ENV')
+if not ENV:
+    print("ENV not specified")
+    sys.exit(1)
+
+LOCAL_SETTINGS_FILE = os.getenv('LOCAL_SETTINGS_FILE', '/app/_service_storage/settings.json')
+if not os.path.exists(LOCAL_SETTINGS_FILE):
+    print("LOCAL_SETTINGS_FILE not specified")
+    sys.exit(1)
+
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
-LOG_FORMAT = os.getenv('LOG_FORMAT', '[%(levelname)s] - %(message)s')
-CONFIG_FILEPATH = os.getenv('CONFIG_FILEPATH', '/app/db/config.json')
+LOG_FORMAT = os.getenv('LOG_FORMAT', '[ %(levelname)5s ] - %(message)s')
 
 
 def _get_this_module():
     return sys.modules[__name__]
 
 
-def _set_dynamic_module_attrs(dynamic_attrs):
-    for key, value in dynamic_attrs.items():
-        setattr(_get_this_module(), key, value)
+def _read_local_config():
+    return json.loads(open(LOCAL_SETTINGS_FILE).read())
 
 
-def read_config_file():
-    return json.loads(open(CONFIG_FILEPATH).read())
-
-
-def write_config_file(**kwargs):
-    config_data = read_config_file()
+def _write_local_config(**kwargs):
+    config_data = _read_local_config()
+    kwargs = _uppercase_dict_keys(kwargs)
+    # TODO evaluate if check key to key is needed. No new keys can be added
     for key in config_data:
         if key in kwargs:
             config_data[key] = kwargs[key]
     try:
-        with open(CONFIG_FILEPATH, 'w') as config_file:
+        with open(LOCAL_SETTINGS_FILE, 'w') as config_file:
+            config_data = _uppercase_dict_keys(config_data)
             json.dump(config_data, config_file, ensure_ascii=False, indent=4)
-            _set_dynamic_module_attrs(config_data)
-            print("Updated CONFIG_FILE with new data")
+            _set_module_attributes(config_data)
+            print("Updated LOCAL_SETTINGS_FILE with new data")
     except:
-        print("Impossible to update CONFIG_FILE")
+        print("Impossible to update LOCAL_SETTINGS_FILE")
     return config_data
 
 
-def show_current_config():
-    config_data = read_config_file()
-    variables_to_show = list(config_data.keys()) + [
-        'PORT', 
-        'LOG_LEVEL', 
-        'DB_CONFIG',
-        ]
-    for key in sorted(variables_to_show):
-        print(f"{key}={getattr(_get_this_module(), key)}")
+def _uppercase_dict_keys(base_dict):
+    # TODO: optimize all in a list comprehension
+    out_dict = {}
+    for k, v in base_dict.items():
+        if isinstance(v, dict):
+            v = _uppercase_dict_keys(v)
+        out_dict[k.upper()] = v
+    return out_dict
 
+
+def _lowercase_dict_keys(base_dict):
+    # TODO: optimize all in a list comprehension
+    out_dict = {}
+    for k, v in base_dict.items():
+        if isinstance(v, dict):
+            v = _lowercase_dict_keys(v)
+        out_dict[k.lower()] = v
+    return out_dict
+
+
+def _set_module_attributes(attributes):
+    attributes = _uppercase_dict_keys(attributes)
+    this_module = _get_this_module()
+    for key, value in attributes.items():
+        setattr(this_module, key, value)
+
+
+def config_read():
+    """ Manages the configuration read
+    
+    It works for local service storage config and event for remote config
+    """
+    return _read_local_config()
+
+
+def config_write(**kwargs):
+    """ Manages the configuration write
+    
+    It works for local service storage config and event for remote config
+    """
+    return _write_local_config(**kwargs)
+
+
+def config_print():
+    config_data = config_read()
+    variables_to_show = list(config_data.keys()) + [
+        'ENV',
+        'LOG_LEVEL',
+        'LOCAL_SETTINGS_FILE',
+        ]
+    this_module = _get_this_module()
+    for key in sorted(variables_to_show):
+        print(f"{key} = {getattr(this_module, key)}")
+
+
+def config_synchronize():
+    """ Synchronize settings between local config and remote config """
+    pass
 
 # once the module code is loaded, sets dynamic attrs
-_set_dynamic_module_attrs(read_config_file())
+_set_module_attributes(config_read())

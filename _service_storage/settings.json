@@ -1,0 +1,8 @@
+{
+    "FAKE_SCAN": true,
+    "MAX_SCAN_TICK": 10,
+    "MIN_SCAN_TICK": 1,
+    "RUN_FLAG": false,
+    "SCAN_TICK": 4,
+    "UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee"
+}

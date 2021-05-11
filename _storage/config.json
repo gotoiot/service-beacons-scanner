@@ -1,6 +1,0 @@
-{
-    "IBEACON_RUN_FLAG": true,
-    "IBEACON_CALLBACK_URI": "https://my-json-server.typicode.com/typicode/demo/posts",
-    "IBEACON_SCAN_TICK": 5,
-    "IBEACON_UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee"
-}
