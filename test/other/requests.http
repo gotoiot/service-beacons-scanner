@@ -1,5 +1,8 @@
 @prefix = http://localhost:5000
 
+### Obtain the service status and description
+
+GET {{prefix}}/status
 
 ### Start the ibeacon scanner
 
@@ -26,15 +29,14 @@ GET {{prefix}}/ibeacon_scanner/settings
 
 ### Set ibeacon scanner settings
 
-POST {{prefix}}/ibeacon_scanner/settings
+PUT {{prefix}}/ibeacon_scanner/settings
 Content-Type: application/json
 
 {
-    "uuid_filter": "ABC123",
+    "uuid_filter": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
     "scan_tick": 3,
-    "run_flag": true,
-    "fake_scan": false,
-    "http_onchange_callback_url": ""
+    "run_flag": false,
+    "fake_scan": true
 }
 
 ### Get ibeacon scanner read beacons data

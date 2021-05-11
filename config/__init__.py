@@ -16,6 +16,7 @@ if not os.path.exists(LOCAL_SETTINGS_FILE):
 
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
 LOG_FORMAT = os.getenv('LOG_FORMAT', '[ %(levelname)5s ] - %(message)s')
+PORT = int(os.getenv('PORT', 5000))
 
 
 def _get_this_module():
@@ -28,7 +29,6 @@ def _read_local_config():
 
 def _write_local_config(**kwargs):
     config_data = _read_local_config()
-    kwargs = _uppercase_dict_keys(kwargs)
     # TODO evaluate if check key to key is needed. No new keys can be added
     for key in config_data:
         if key in kwargs:
@@ -84,10 +84,11 @@ def config_write(**kwargs):
     
     It works for local service storage config and event for remote config
     """
+    kwargs = _uppercase_dict_keys(kwargs)
     return _write_local_config(**kwargs)
 
 
-def config_print():
+def config_print_current_settings():
     config_data = config_read()
     variables_to_show = list(config_data.keys()) + [
         'ENV',
@@ -95,8 +96,10 @@ def config_print():
         'LOCAL_SETTINGS_FILE',
         ]
     this_module = _get_this_module()
+    print("\n///////////////////////////////////////////////////////////////////////////")
     for key in sorted(variables_to_show):
-        print(f"{key} = {getattr(this_module, key)}")
+        print(f"// * --> {key} = {getattr(this_module, key)}")
+    print("///////////////////////////////////////////////////////////////////////////\n\n")
 
 
 def config_synchronize():
