@@ -1,6 +1,16 @@
 FROM python:3.8
 
-RUN apt-get update && apt-get install -y libpcre3 libpcre3-dev gcc wget libbluetooth-dev libcap2-bin bluetooth bluez blueman
+RUN apt-get update && apt-get install -y \
+libpcre3 \
+libpcre3-dev \
+gcc \
+wget \
+libbluetooth-dev \
+libcap2-bin \
+bluetooth \
+bluez \
+blueman
+
 RUN useradd -ms /bin/bash uwsgi
 
 RUN mkdir /app

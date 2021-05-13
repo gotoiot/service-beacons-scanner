@@ -35,37 +35,36 @@ def _write_local_config(**kwargs):
             config_data[key] = kwargs[key]
     try:
         with open(LOCAL_SETTINGS_FILE, 'w') as config_file:
-            config_data = _uppercase_dict_keys(config_data)
             json.dump(config_data, config_file, ensure_ascii=False, indent=4)
             _set_module_attributes(config_data)
-            print("Updated LOCAL_SETTINGS_FILE with new data")
+            print("[ INFO ] - Updated LOCAL_SETTINGS_FILE with new data")
     except:
-        print("Impossible to update LOCAL_SETTINGS_FILE")
+        print("[ ERROR ] - Impossible to update LOCAL_SETTINGS_FILE")
     return config_data
 
 
-def _uppercase_dict_keys(base_dict):
+def uppercase_dict_keys(base_dict):
     # TODO: optimize all in a list comprehension
     out_dict = {}
     for k, v in base_dict.items():
         if isinstance(v, dict):
-            v = _uppercase_dict_keys(v)
+            v = uppercase_dict_keys(v)
         out_dict[k.upper()] = v
     return out_dict
 
 
-def _lowercase_dict_keys(base_dict):
+def lowercase_dict_keys(base_dict):
     # TODO: optimize all in a list comprehension
     out_dict = {}
     for k, v in base_dict.items():
         if isinstance(v, dict):
-            v = _lowercase_dict_keys(v)
+            v = lowercase_dict_keys(v)
         out_dict[k.lower()] = v
     return out_dict
 
 
 def _set_module_attributes(attributes):
-    attributes = _uppercase_dict_keys(attributes)
+    attributes = uppercase_dict_keys(attributes)
     this_module = _get_this_module()
     for key, value in attributes.items():
         setattr(this_module, key, value)
@@ -84,11 +83,12 @@ def config_write(**kwargs):
     
     It works for local service storage config and event for remote config
     """
-    kwargs = _uppercase_dict_keys(kwargs)
+    kwargs = uppercase_dict_keys(kwargs)
     return _write_local_config(**kwargs)
 
 
-def config_print_current_settings():
+def config_get_current_settings_as_str(value_prefix=" * "):
+    current_data = ""
     config_data = config_read()
     variables_to_show = list(config_data.keys()) + [
         'ENV',
@@ -96,10 +96,9 @@ def config_print_current_settings():
         'LOCAL_SETTINGS_FILE',
         ]
     this_module = _get_this_module()
-    print("\n///////////////////////////////////////////////////////////////////////////")
     for key in sorted(variables_to_show):
-        print(f"// * --> {key} = {getattr(this_module, key)}")
-    print("///////////////////////////////////////////////////////////////////////////\n\n")
+        current_data += f"{value_prefix}{key} = {getattr(this_module, key)}\n"
+    return current_data
 
 
 def config_synchronize():

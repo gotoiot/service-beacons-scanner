@@ -5,7 +5,7 @@ from flask import Flask, jsonify
 from flask_restful import Api
 from flask_gzip import Gzip
 
-from config import PORT, ENV, config_print_current_settings
+from config import PORT, ENV, config_get_current_settings_as_str
 from log import error, warn, info, debug
 from ibeacon_scanner.resources import ibeacon_add_http_resources_to_api
 from ibeacon_scanner.services import ibeacon_init_scanner, ibeacon_stop_scanner
@@ -60,8 +60,8 @@ def status():
     })
 
 
-def _get_welcome_message():
-    return """\n\n
+def _show_welcome_message():
+    welcome_message = """\n\n
           /$$$$$$            /$$                    /$$$$$$      /$$$$$$$$
          /$$__  $$          | $$                   |_  $$_/     |__  $$__/
         | $$  \__/ /$$$$$$ /$$$$$$   /$$$$$$         | $$   /$$$$$$| $$   
@@ -76,11 +76,15 @@ def _get_welcome_message():
                    ╠╩╗ ║  ║╣   ╚═╗ ║╣  ╠╦╝ ╚╗╔╚ ║ ║   ║╣ 
                    ╚═╝ ╩═ ╚═╝  ╚═╝ ╚══ ╩╚═  ╚╝  ╩ ╚══ ╚═╝
     \n"""
+    config_settings = config_get_current_settings_as_str(value_prefix="# ")
+    print(welcome_message)
+    print(f"\n{'#' * 80}\n")
+    print(config_settings)
+    print(f"{'#' * 80}\n\n")
 
 
 def _init_application():
-    print(_get_welcome_message())
-    config_print_current_settings()
+    _show_welcome_message()
     info("Starting to run BLE Service")
     ibeacon_add_http_resources_to_api(flask_restful_api, prefix="/ibeacon_scanner")
     ibeacon_init_scanner()
