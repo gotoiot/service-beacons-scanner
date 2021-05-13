@@ -1,16 +1,21 @@
 #!/usr/bin/python
+import random
+import json
 import time
 from threading import Thread
+from multiprocessing import shared_memory
 
 from beacontools import BeaconScanner
 from beacontools import IBeaconFilter
 
 from log import error, warn, info, debug
+from config import config_write, lowercase_dict_keys
 from config import MIN_SCAN_TICK, MAX_SCAN_TICK, RUN_FLAG, \
-    SCAN_TICK, UUID_FILTER, FAKE_SCAN
+    SCAN_TICK, UUID_FILTER, FAKE_SCAN, BEACONS_LIST_CAPACITY
 
-_ibeacons_scanner = None
-
+RUN_LOOP_THREAD_NAME = "ibeacon_thread"
+BEACONS_DATA_SHM = "ibeacon_data"
+SCANNER_SETTINGS_SHM = "ibeacon_scanner_settings"
 
 class _IBeacon:
     """ Class that represents an iBeacon packet """
@@ -31,9 +36,9 @@ class _IBeacon:
         )
 
     def __repr__(self):
-        return f"IBeacon(" + \
-            f"mac_address={self.mac_address}, " + \
-            f"uuid={self.uuid}, " + \
+        return f"_IBeacon(" + \
+            f"mac_address='{self.mac_address}', " + \
+            f"uuid='{self.uuid}', " + \
             f"major={self.major}, " + \
             f"minor={self.minor}, " + \
             f"tx_power={self.tx_power}, " + \
@@ -49,198 +54,186 @@ class _IBeacon:
          return other.rssi < self.rssi
 
 
-class _IBeaconsScanner:
-    """ 
-    This class is used to perform all beacons operations like:
-        - start/stop scanner
-        - set callback
-        - set beacons filter and scan tick
-        - get beacons info
-    """
+def _shared_memory_init(**kwargs):
+    if not 'name' in kwargs:
+        return
+    if not 'data_dict' in kwargs:
+        return
+    shm = shared_memory.ShareableList([json.dumps(kwargs['data_dict'])], name=kwargs['name'])
+    return shm
 
-    def __init__(self, **kwargs):
-        self._uuid_filter = kwargs.get('uuid_filter', '')
-        self._scan_tick = kwargs.get('scan_tick', 5)
-        self._onchange_callback = None
-        self._nearest_beacon = _IBeacon()
-        self._last_nearest_beacon = _IBeacon()
-        self._beacons_list = []
-        self._scan_thread = None
-        self._run_flag = False
-        self._fake_scan = kwargs.get('fake_scan', False)
-        if 'run_flag' in kwargs and isinstance(kwargs['run_flag'], bool) and kwargs['run_flag']:
-            self.start()
 
-    def __repr__(self):
-        return f"IBeaconScanner(" + \
-            f"uuid_filter={self._uuid_filter}, " + \
-            f"scan_tick={self._scan_tick}, " + \
-            f"run_flag={self._run_flag}, " + \
-            f"fake_scan={self._fake_scan}" + \
-        ")"
+def _shared_memory_del(**kwargs):
+    if not 'name' in kwargs:
+        return
+    shm = shared_memory.ShareableList(**kwargs)
+    shm.shm.close()
+    shm.shm.unlink()
 
-    @property
-    def nearest_beacon(self):
-        return self._nearest_beacon
 
-    @property
-    def last_nearest_beacon(self):
-        return self._last_nearest_beacon
+def _shared_memory_get_dict(**kwargs):
+    if not 'name' in kwargs:
+        return
+    shm = shared_memory.ShareableList(**kwargs)
+    return json.loads(shm[0])
 
-    @property
-    def beacons_list(self):
-        return self._beacons_list
 
-    def start(self):
-        if not self._run_flag:
-            self._run_flag = True
-            info(f"Starting iBeaconScanner: {self.get_scanner_settings()}")
-            thread_target = self._scan
-            if self._fake_scan:
-                thread_target = self._scan_fake
-            self._scan_thread = Thread(target=thread_target)
-            self._scan_thread.start()
+def _shared_memory_set_dict(**kwargs):
+    if not 'name' in kwargs:
+        return
+    if not 'data_dict' in kwargs:
+        return
+    shm = shared_memory.ShareableList(name=kwargs['name'])
+    shm[0] = json.dumps(kwargs['data_dict'])
 
-    def stop(self):
-        if self._run_flag:
-            self._run_flag = False
-            info("Waiting for scan thread finalizes iBeacon reads")
-            self._scan_thread.join(timeout=float(MAX_SCAN_TICK))
-            info("IBeaconScanner stopped")
 
-    def get_beacons_data(self):
-        return {
-            'nearest_beacon' : vars(self.nearest_beacon) if self.nearest_beacon else None,
-            'last_nearest_beacon' : vars(self.last_nearest_beacon) if self.last_nearest_beacon else None,
-            'beacons_list' : [vars(b) for b in self._beacons_list] if self._beacons_list else None,
-        }
+def _publish_event_nearest_ibeacon_changes(**kwargs):
+    if not 'data' in kwargs:
+        return
+    info(f"Publishing event NearestiBeaconChange: {kwargs['data']}")
 
-    def get_scanner_settings(self):
-        return {
-            'uuid_filter': self._uuid_filter,
-            'scan_tick': self._scan_tick,
-            'run_flag': self._run_flag,
-            'fake_scan': self._fake_scan,
-        }
 
-    def set_scanner_settings(self, **kwargs):
-        if 'uuid_filter' in kwargs and isinstance(kwargs['uuid_filter'], str):
-            self._uuid_filter = kwargs["uuid_filter"]
-            debug(f"IBeaconScanner 'uuid_filter' update to: {self._uuid_filter}")
+def _publish_event_ibeacon_read(**kwargs):
+    if not 'data' in kwargs:
+        return
+    # info(f"Publishing event iBeaconRead: {kwargs['data']}")
 
-        if 'scan_tick' in kwargs and isinstance(kwargs['scan_tick'], int):
-            if kwargs["scan_tick"] < MIN_SCAN_TICK:
-                self._scan_tick = MIN_SCAN_TICK
-            elif kwargs["scan_tick"] > MAX_SCAN_TICK:
-                self._scan_tick = MAX_SCAN_TICK
-            else:
-                self._scan_tick = kwargs["scan_tick"]
-            debug(f"IBeaconScanner 'scan_tick' update to: {self._scan_tick}")
 
-        if 'fake_scan' in kwargs and isinstance(kwargs['fake_scan'], bool):
-            self._fake_scan = kwargs['fake_scan']
-            debug(f"IBeaconScanner 'fake_scan' update to: {self._fake_scan}")
+def _scan_beacons(**kwargs):
+    beacons_list = []
+    # read beaconstools callback
+    def _scans_callback(bt_addr, rssi, packet, additional_info):
+        beacon = _IBeacon(bt_addr, packet.uuid, packet.major, packet.minor, packet.tx_power, rssi)
+        if beacon not in beacons_list:
+            beacons_list.append(beacon)
+    # create and start scanner en each cycle
+    beaconstools_scanner = BeaconScanner(
+        _scans_callback, 
+        device_filter=IBeaconFilter(uuid=kwargs['uuid_filter'])
+    )
+    beaconstools_scanner.start()
+    time.sleep(kwargs['scan_tick'])
+    beaconstools_scanner.stop()
+    # return beacon_list
+    return beacons_list
 
-        if 'run_flag' in kwargs and isinstance(kwargs['run_flag'], bool):
-            self.start() if kwargs['run_flag'] else self.stop()
 
-    def set_onchange_callback(self, callback=None):
-        if not callback:
-            return
-        info("Setting onchange callback")
-        self._onchange_callback = callback
+def _scan_beacons_fake(**kwargs):
+    beacons_list = []
+    beacons_list.append(_IBeacon("11:11:11", UUID_FILTER, 11, 1, -50, random.randint(1, 100) * -1))
+    beacons_list.append(_IBeacon("22:22:22", UUID_FILTER, 11, 2, -50, random.randint(1, 100) * -1))
+    beacons_list.append(_IBeacon("33:33:33", UUID_FILTER, 11, 3, -50, random.randint(1, 100) * -1))
+    time.sleep(kwargs['scan_tick'])
+    return beacons_list
 
-    def _scan(self):
-        def _scans_callback(bt_addr, rssi, packet, additional_info):
-            beacon = _IBeacon(bt_addr, packet.uuid, packet.major, packet.minor, packet.tx_power, rssi)
-            if not beacon in self._beacons_list:
-                self._beacons_list.append(beacon)
-        
-        while(self._run_flag):
-            self._beacons_list.clear()
-            beaconstools_scanner = BeaconScanner(
-                _scans_callback, 
-                device_filter=IBeaconFilter(uuid=self._uuid_filter)
-            )
-            beaconstools_scanner.start()
-            time.sleep(self._scan_tick)
-            beaconstools_scanner.stop()
-            self._updates_beacons_data()
-            if self._is_nearest_beacon_changes():
-                self._invoke_onchange_callbacks()
-        info(f"Finished _scan execution")
 
-    def _scan_fake(self):
-        import random
-        while(self._run_flag):
-            self._beacons_list.clear()
-            self._beacons_list.append(_IBeacon("11:11:11", UUID_FILTER, 11, 1, -50, random.randint(1, 100) * -1))
-            self._beacons_list.append(_IBeacon("22:22:22", UUID_FILTER, 11, 2, -50, random.randint(1, 100) * -1))
-            self._beacons_list.append(_IBeacon("33:33:33", UUID_FILTER, 11, 3, -50, random.randint(1, 100) * -1))
-            time.sleep(self._scan_tick)
-            self._updates_beacons_data()
-            if self._is_nearest_beacon_changes():
-                self._invoke_onchange_callbacks()
-        info(f"Finished scan_fake execution")
-
-    def _updates_beacons_data(self):
-        if self._beacons_list:
-            self._beacons_list = sorted(self._beacons_list)
-            self._last_nearest_beacon = self._nearest_beacon
-            self._nearest_beacon = self._beacons_list[0]
-            info(f"Nearest beacon: {self._nearest_beacon}")
-        else:
-            self._last_nearest_beacon = self._nearest_beacon
-            self._nearest_beacon = None
-            warn("No beacons found in this scan")
-
-    def _is_nearest_beacon_changes(self):
-        if not self._nearest_beacon and not self._last_nearest_beacon:
-            return False
-        if not self._nearest_beacon or not self._last_nearest_beacon:
-            return True
-        if self.nearest_beacon.hash() != self.last_nearest_beacon.hash():
-            return True
+def _is_nearest_beacon_changes(last_beacons_list, new_beacons_list):
+    if not last_beacons_list and not new_beacons_list:
         return False
+    if not last_beacons_list or not new_beacons_list:
+        return True
+    if last_beacons_list[0].hash() != new_beacons_list[0].hash():
+        return True
+    return False
 
-    def _invoke_onchange_callbacks(self):
-        if self._onchange_callback:
-            self._onchange_callback(self.get_beacons_data())
-            info(f"Called scanner onchange callback")
+
+def _get_last_beacon_list_from_shm():
+    last_beacons_data = _shared_memory_get_dict(name=BEACONS_DATA_SHM)
+    last_beacons_list = last_beacons_data["beacons_list"]
+    return [_IBeacon(**beacon_data) for beacon_data in last_beacons_list] \
+        if last_beacons_list else []
+
+
+def _render_beacons_data(beacons_list):
+    return {
+        'nearest_beacon' : vars(beacons_list[0]) if beacons_list else None,
+        'beacons_list' : [vars(b) for b in beacons_list] if beacons_list else [],
+    }
+
+
+def _run_scanner_loop():
+    while 1:
+        scanner_settings = _shared_memory_get_dict(name=SCANNER_SETTINGS_SHM)
+        if scanner_settings['run_flag']:
+            # performs ibeacon scanning
+            if scanner_settings['fake_scan']:
+                current_beacons_list = _scan_beacons_fake(**scanner_settings)
+            else:
+                current_beacons_list = _scan_beacons(**scanner_settings)
+            # accomodate data for this new cycle
+            current_beacons_list = sorted(current_beacons_list)
+            last_beacons_list = sorted(_get_last_beacon_list_from_shm())
+            beacons_data_dict = _render_beacons_data(current_beacons_list)
+            # compare new beacons list against last list and performs actions
+            if _is_nearest_beacon_changes(last_beacons_list, current_beacons_list):
+                debug("Nearest beacon has changed")
+                nearest_beacon_data = beacons_data_dict["nearest_beacon"]
+                _publish_event_nearest_ibeacon_changes(data=nearest_beacon_data)
+            # updates global system beacon data
+            if current_beacons_list and current_beacons_list != last_beacons_list:
+                _publish_event_ibeacon_read(data=beacons_data_dict)
+            _shared_memory_set_dict(name=BEACONS_DATA_SHM, data_dict=beacons_data_dict)
 
 
 def ibeacon_init_scanner():
     info("Initializing iBeacon Scanner")
-    global _ibeacons_scanner
     scanner_settings = {
         'uuid_filter': UUID_FILTER,
         'scan_tick': SCAN_TICK,
         'run_flag': RUN_FLAG,
         'fake_scan': FAKE_SCAN,
     }
-    _ibeacons_scanner = _IBeaconsScanner(**scanner_settings)
+    _shared_memory_init(name=SCANNER_SETTINGS_SHM, data_dict=scanner_settings)
+    initial_beacons_data = _render_beacons_data([_IBeacon("","",0,0,0,0) for _ in range(BEACONS_LIST_CAPACITY)])
+    _shared_memory_init(name=BEACONS_DATA_SHM, data_dict=initial_beacons_data)
+    run_thread = Thread(name=RUN_LOOP_THREAD_NAME, target=_run_scanner_loop)
+    run_thread.start()
 
 
 def ibeacon_start_scanner():
-    _ibeacons_scanner.start()
+    info("Starting iBeacon Scanner")
+    ibeacon_set_scanner_settings(run_flag=True)
 
 
 def ibeacon_stop_scanner():
-    _ibeacons_scanner.stop()
-
-
-def ibeacon_set_onchange_callback(callback):
-    _ibeacons_scanner.set_onchange_callback(callback)
-
-
-def ibeacon_get_scanner_settings():
-    return _ibeacons_scanner.get_scanner_settings()
-
-
-def ibeacon_set_scanner_settings(**kwargs):
-    return _ibeacons_scanner.set_scanner_settings(**kwargs)
+    info("Stopping iBeacon Scanner")
+    ibeacon_set_scanner_settings(run_flag=False)
 
 
 def ibeacon_get_beacons_data():
-    return _ibeacons_scanner.get_beacons_data()
+    return _shared_memory_get_dict(name=BEACONS_DATA_SHM)
 
+
+def ibeacon_set_scanner_settings(**kwargs):
+    kwargs = lowercase_dict_keys(kwargs)
+    current_settings = _shared_memory_get_dict(name=SCANNER_SETTINGS_SHM)
+
+    if 'uuid_filter' in kwargs and isinstance(kwargs['uuid_filter'], str):
+        current_settings["uuid_filter"] = kwargs["uuid_filter"]
+        debug(f"IBeaconScanner 'uuid_filter' update to: {current_settings['uuid_filter']}")
+
+    if 'scan_tick' in kwargs and isinstance(kwargs['scan_tick'], int):
+        if kwargs["scan_tick"] < MIN_SCAN_TICK:
+            current_settings["scan_tick"] = MIN_SCAN_TICK
+        elif kwargs["scan_tick"] > MAX_SCAN_TICK:
+            current_settings["scan_tick"] = MAX_SCAN_TICK
+        else:
+            current_settings["scan_tick"] = kwargs["scan_tick"]
+        debug(f"IBeaconScanner 'scan_tick' update to: {current_settings['scan_tick']}")
+
+    if 'fake_scan' in kwargs and isinstance(kwargs['fake_scan'], bool):
+        current_settings["fake_scan"] = kwargs['fake_scan']
+        debug(f"IBeaconScanner 'fake_scan' update to: {current_settings['fake_scan']}")
+
+    if 'run_flag' in kwargs and isinstance(kwargs['run_flag'], bool):
+        current_settings["run_flag"] = kwargs['run_flag']
+        debug(f"IBeaconScanner 'run_flag' update to: {current_settings['run_flag']}")
+        
+    if current_settings != _shared_memory_get_dict(name=SCANNER_SETTINGS_SHM):
+        config_write(**current_settings)
+        _shared_memory_set_dict(name=SCANNER_SETTINGS_SHM, data_dict=current_settings)
+        info("Updated new scanner settings")
+
+
+def ibeacon_get_scanner_settings():
+    return _shared_memory_get_dict(name=SCANNER_SETTINGS_SHM)

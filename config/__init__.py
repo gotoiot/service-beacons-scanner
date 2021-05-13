@@ -29,15 +29,13 @@ def _read_local_config():
 
 def _write_local_config(**kwargs):
     config_data = _read_local_config()
-    # TODO evaluate if check key to key is needed. No new keys can be added
     for key in config_data:
         if key in kwargs:
             config_data[key] = kwargs[key]
     try:
         with open(LOCAL_SETTINGS_FILE, 'w') as config_file:
             json.dump(config_data, config_file, ensure_ascii=False, indent=4)
-            _set_module_attributes(config_data)
-            print("[ INFO ] - Updated LOCAL_SETTINGS_FILE with new data")
+            print("[  INFO ] - Updated LOCAL_SETTINGS_FILE with new data")
     except:
         print("[ ERROR ] - Impossible to update LOCAL_SETTINGS_FILE")
     return config_data
@@ -84,7 +82,8 @@ def config_write(**kwargs):
     It works for local service storage config and event for remote config
     """
     kwargs = uppercase_dict_keys(kwargs)
-    return _write_local_config(**kwargs)
+    new_config_data = _write_local_config(**kwargs)
+    return new_config_data
 
 
 def config_get_current_settings_as_str(value_prefix=" * "):
