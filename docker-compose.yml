@@ -14,4 +14,7 @@ services:
     ports:
       - "5000:5000"
     network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     

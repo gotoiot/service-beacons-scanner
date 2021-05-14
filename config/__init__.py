@@ -42,7 +42,6 @@ def _write_local_config(**kwargs):
 
 
 def uppercase_dict_keys(base_dict):
-    # TODO: optimize all in a list comprehension
     out_dict = {}
     for k, v in base_dict.items():
         if isinstance(v, dict):
@@ -52,7 +51,6 @@ def uppercase_dict_keys(base_dict):
 
 
 def lowercase_dict_keys(base_dict):
-    # TODO: optimize all in a list comprehension
     out_dict = {}
     for k, v in base_dict.items():
         if isinstance(v, dict):
@@ -93,6 +91,7 @@ def config_get_current_settings_as_str(value_prefix=" * "):
         'ENV',
         'LOG_LEVEL',
         'LOCAL_SETTINGS_FILE',
+        'PORT',
         ]
     this_module = _get_this_module()
     for key in sorted(variables_to_show):

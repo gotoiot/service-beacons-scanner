@@ -21,11 +21,13 @@ BEACONS_DATA_FILE = "/local/storage/ibeacon_data.json"
 SCANNER_SETTINGS_FILE = "/local/storage/ibeacon_scanner_settings.json"
 
 
-def _write_local_file(**kwargs):
+def _write_local_cache_file(**kwargs):
     if not 'name' in kwargs:
         return
     if not 'data_dict' in kwargs:
         return
+    if not kwargs['data_dict']:
+        kwargs['data_dict'] = {}
     cycles = 0
     while cycles < 5:
         try:
@@ -39,7 +41,7 @@ def _write_local_file(**kwargs):
         time.sleep(1)
 
 
-def _read_local_file(**kwargs):
+def _read_local_cache_file(**kwargs):
     if not 'name' in kwargs:
         return
     cycles = 0
@@ -51,7 +53,20 @@ def _read_local_file(**kwargs):
         cycles += 1
         time.sleep(1)
     return {}
-            
+
+
+def _get_last_beacon_list_from_cache_file():
+    last_beacons_data = _read_local_cache_file(name=BEACONS_DATA_FILE)
+    last_beacons_list = last_beacons_data["beacons_list"]
+    return [IBeacon(**beacon_data) for beacon_data in last_beacons_list] \
+        if last_beacons_list else []
+
+
+def _render_beacons_data(beacons_list):
+    return {
+        'nearest_beacon' : vars(beacons_list[0]) if beacons_list else None,
+        'beacons_list' : [vars(b) for b in beacons_list] if beacons_list else [],
+    }
 
 
 def _publish_event_nearest_ibeacon_changes(**kwargs):
@@ -104,23 +119,9 @@ def _is_nearest_beacon_changes(last_beacons_list, new_beacons_list):
     return False
 
 
-def _get_last_beacon_list_from_shm():
-    last_beacons_data = _read_local_file(name=BEACONS_DATA_FILE)
-    last_beacons_list = last_beacons_data["beacons_list"]
-    return [IBeacon(**beacon_data) for beacon_data in last_beacons_list] \
-        if last_beacons_list else []
-
-
-def _render_beacons_data(beacons_list):
-    return {
-        'nearest_beacon' : vars(beacons_list[0]) if beacons_list else None,
-        'beacons_list' : [vars(b) for b in beacons_list] if beacons_list else [],
-    }
-
-
 def _run_scanner_loop():
     while 1:
-        scanner_settings = _read_local_file(name=SCANNER_SETTINGS_FILE)
+        scanner_settings = _read_local_cache_file(name=SCANNER_SETTINGS_FILE)
         if scanner_settings['run_flag']:
             # performs ibeacon scanning
             if scanner_settings['fake_scan']:
@@ -129,7 +130,7 @@ def _run_scanner_loop():
                 current_beacons_list = _scan_beacons(**scanner_settings)
             # accomodate data for this new cycle
             current_beacons_list = sorted(current_beacons_list)
-            last_beacons_list = sorted(_get_last_beacon_list_from_shm())
+            last_beacons_list = sorted(_get_last_beacon_list_from_cache_file())
             beacons_data_dict = _render_beacons_data(current_beacons_list)
             # compare new beacons list against last list and performs actions
             if _is_nearest_beacon_changes(last_beacons_list, current_beacons_list):
@@ -139,7 +140,7 @@ def _run_scanner_loop():
             # updates global system beacon data
             if current_beacons_list and current_beacons_list != last_beacons_list:
                 _publish_event_ibeacon_read(data=beacons_data_dict)
-            _write_local_file(name=BEACONS_DATA_FILE, data_dict=beacons_data_dict)
+            _write_local_cache_file(name=BEACONS_DATA_FILE, data_dict=beacons_data_dict)
 
 
 def ibeacon_init_scanner():
@@ -150,9 +151,9 @@ def ibeacon_init_scanner():
         'run_flag': RUN_FLAG,
         'fake_scan': FAKE_SCAN,
     }
-    _write_local_file(name=SCANNER_SETTINGS_FILE, data_dict=scanner_settings)
+    _write_local_cache_file(name=SCANNER_SETTINGS_FILE, data_dict=scanner_settings)
     initial_beacons_data = _render_beacons_data([IBeacon("","",0,0,0,0) for _ in range(BEACONS_LIST_CAPACITY)])
-    _write_local_file(name=BEACONS_DATA_FILE, data_dict=initial_beacons_data)
+    _write_local_cache_file(name=BEACONS_DATA_FILE, data_dict=initial_beacons_data)
     _run_scanner_loop()
 
 
@@ -167,12 +168,12 @@ def ibeacon_stop_scanner():
 
 
 def ibeacon_get_beacons_data():
-    return _read_local_file(name=BEACONS_DATA_FILE)
+    return _read_local_cache_file(name=BEACONS_DATA_FILE)
 
 
 def ibeacon_set_scanner_settings(**kwargs):
     kwargs = lowercase_dict_keys(kwargs)
-    current_settings = _read_local_file(name=SCANNER_SETTINGS_FILE)
+    current_settings = _read_local_cache_file(name=SCANNER_SETTINGS_FILE)
 
     if 'uuid_filter' in kwargs and isinstance(kwargs['uuid_filter'], str):
         current_settings["uuid_filter"] = kwargs["uuid_filter"]
@@ -195,11 +196,11 @@ def ibeacon_set_scanner_settings(**kwargs):
         current_settings["run_flag"] = kwargs['run_flag']
         debug(f"IBeaconScanner 'run_flag' update to: {current_settings['run_flag']}")
         
-    if current_settings != _read_local_file(name=SCANNER_SETTINGS_FILE):
+    if current_settings != _read_local_cache_file(name=SCANNER_SETTINGS_FILE):
         config_write(**current_settings)
-        _write_local_file(name=SCANNER_SETTINGS_FILE, data_dict=current_settings)
+        _write_local_cache_file(name=SCANNER_SETTINGS_FILE, data_dict=current_settings)
         info("Updated new scanner settings")
 
 
 def ibeacon_get_scanner_settings():
-    return _read_local_file(name=SCANNER_SETTINGS_FILE)
+    return _read_local_cache_file(name=SCANNER_SETTINGS_FILE)

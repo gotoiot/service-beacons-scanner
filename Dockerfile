@@ -25,7 +25,9 @@ ADD . /app
 
 STOPSIGNAL SIGHUP
 
-RUN mkdir -p /local/storage
-RUN chmod -R 777 /local/storage
+RUN setcap 'cap_net_raw,cap_net_admin+eip' "$(readlink -f "$(which uwsgi)")" && \
+setcap 'cap_net_raw,cap_net_admin+eip' "$(readlink -f "$(which python3)")"
+
+RUN mkdir -p /local/storage && chmod -R 777 /local/storage
 
 CMD su uwsgi -c 'uwsgi uwsgi.ini --thunder-lock'
