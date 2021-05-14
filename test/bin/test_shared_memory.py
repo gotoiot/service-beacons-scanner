@@ -42,7 +42,7 @@ shm_a.shm.close()
 shm_a.shm.unlink()
 
 
-def _init_shared_memory(**kwargs):
+def _shared_memory_init(**kwargs):
     if not 'name' in kwargs:
         return
     if not 'data_dict' in kwargs:
@@ -51,7 +51,7 @@ def _init_shared_memory(**kwargs):
     return shm
 
 
-def _del_shared_memory(**kwargs):
+def _shared_memory_del(**kwargs):
     if not 'name' in kwargs:
         return
     shm = shared_memory.ShareableList(**kwargs)
@@ -59,14 +59,14 @@ def _del_shared_memory(**kwargs):
     shm.shm.unlink()
 
 
-def _get_shared_memory_dict(**kwargs):
+def _shared_memory_get_dict(**kwargs):
     if not 'name' in kwargs:
         return
     shm = shared_memory.ShareableList(**kwargs)
     return json.loads(shm[0])
 
 
-def _set_shared_memory_dict(**kwargs):
+def _shared_memory_set_dict(**kwargs):
     if not 'name' in kwargs:
         return
     if not 'data_dict' in kwargs:
@@ -75,10 +75,10 @@ def _set_shared_memory_dict(**kwargs):
     shm[0] = json.dumps(kwargs['data_dict'])
     
 
-_init_shared_memory(name="beacon_data", data_dict={})
+_shared_memory_init(name="beacon_data", data_dict={})
 
-_set_shared_memory_dict(name="beacon_data", data_dict={'a':1})
+_shared_memory_set_dict(name="beacon_data", data_dict={'a':1})
 
-_get_shared_memory_dict(name="beacon_data")
+_shared_memory_get_dict(name="beacon_data")
 
-_del_shared_memory(name="beacon_data")
+_shared_memory_del(name="beacon_data")

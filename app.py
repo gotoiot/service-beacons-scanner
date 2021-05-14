@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import os
 import traceback
 
 from flask import Flask, jsonify
@@ -19,11 +20,6 @@ application = Flask(
 flask_restful_api = Api(application)
 flask_gzip = Gzip(application)
 application.config['PROPAGATE_EXCEPTIONS'] = True
-
-
-@application.teardown_request
-def shutdown_bluetooth(_):
-    ibeacon_stop_scanner()
 
 
 @application.errorhandler(404)
@@ -87,7 +83,7 @@ def _init_application():
     _show_welcome_message()
     info("Starting to run BLE Service")
     ibeacon_add_http_resources_to_api(flask_restful_api, prefix="/ibeacon_scanner")
-    ibeacon_init_scanner()
+    os.system("python bin/run_ibeacon_scanner.py &")
 
 
 _init_application()

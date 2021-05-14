@@ -1,0 +1,3 @@
+from ibeacon_scanner.services import ibeacon_init_scanner
+
+ibeacon_init_scanner()

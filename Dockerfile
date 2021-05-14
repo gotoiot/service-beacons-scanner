@@ -25,4 +25,7 @@ ADD . /app
 
 STOPSIGNAL SIGHUP
 
+RUN mkdir -p /local/storage
+RUN chmod -R 777 /local/storage
+
 CMD su uwsgi -c 'uwsgi uwsgi.ini --thunder-lock'
