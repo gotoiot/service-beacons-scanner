@@ -14,6 +14,7 @@ if not os.path.exists(LOCAL_SETTINGS_FILE):
     print("LOCAL_SETTINGS_FILE not specified")
     sys.exit(1)
 
+
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
 LOG_FORMAT = os.getenv('LOG_FORMAT', '[ %(levelname)5s ] - %(message)s')
 PORT = int(os.getenv('PORT', 5000))

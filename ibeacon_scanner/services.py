@@ -9,7 +9,9 @@ from multiprocessing import shared_memory
 from beacontools import BeaconScanner
 from beacontools import IBeaconFilter
 
+from event.services import publish_event
 from ibeacon_scanner.models import IBeacon
+from ibeacon_scanner.events import IBeaconChange, IBeaconRead
 from log import error, warn, info, debug
 from config import config_write, lowercase_dict_keys
 from config import MIN_SCAN_TICK, MAX_SCAN_TICK, RUN_FLAG, \
@@ -136,10 +138,10 @@ def _run_scanner_loop():
             if _is_nearest_beacon_changes(last_beacons_list, current_beacons_list):
                 debug("Nearest beacon has changed")
                 nearest_beacon_data = beacons_data_dict["nearest_beacon"]
-                _publish_event_nearest_ibeacon_changes(data=nearest_beacon_data)
+                publish_event(IBeaconChange(nearest_beacon_data))
             # updates global system beacon data
             if current_beacons_list and current_beacons_list != last_beacons_list:
-                _publish_event_ibeacon_read(data=beacons_data_dict)
+                publish_event(IBeaconRead(beacons_data_dict))
             _write_local_cache_file(name=BEACONS_DATA_FILE, data_dict=beacons_data_dict)
 
 
