@@ -85,13 +85,13 @@ La configuración de toda la aplicación está alojada en el archivo `_storage/s
 
 ```json
 {
-    "UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
-    "RUN_FLAG": false,
-    "SCAN_TICK": 3,
-    "MIN_SCAN_TICK": 1,
-    "MAX_SCAN_TICK": 10,
     "FAKE_SCAN": true,
+    "MAX_SCAN_TICK": 20,
+    "MIN_SCAN_TICK": 5,
+    "RUN_FLAG": true,
+    "SCAN_TICK": 10,
     "BEACONS_LIST_CAPACITY": 20,
+    "UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
     "EVENTS_TO_OMIT": "BaseEvent, IBeaconRead"
 }
 ```
@@ -99,13 +99,15 @@ La configuración de toda la aplicación está alojada en el archivo `_storage/s
 Los parámetros de configuración significan lo siguiente:
 
 * **UUID_FILTER**: Filtro para solamente escanear los beacons que tengan tal UUID.
-* **RUN FLAG**: Flag que determina si se deben realizar lecturas de beacons o no.
+* **RUN_FLAG**: Flag que determina si se deben realizar lecturas de beacons o no.
 * **SCAN_TICK**: Valor expresado en segundos que determina cada cuanto tiempo se va a realizar la lectura de beacons.
 * **MAX_SCAN_TICK**: Valor máximo admisible expresado en segundos en la lectura de beacons.
 * **MIN_SCAN_TICK**: Valor mínimo admisible expresado en segundos en la lectura de beacons.
 * **FAKE_SCAN**: Flag que determina si las lecturas se realizan a través del Bluetooth del sistema o de manera simulada.
 * **BEACONS_LIST_CAPACITY**: Capacidad maxima de lectura de beacons cercanos
 * **EVENTS_TO_OMIT**: La lista de eventos que no se publicaran en caso que sucedan.
+
+Por razones del buen funcionamiento de la aplicación, a través de la interfaz HTTP sólo se pueden modificar las configuraciones UUID_FILTER, RUN_FLAG, SCAN_TICK y FAKE_SCAN. El resto solo son configurables mediante el archivo `_storage/settings.json`.
 
 ### Variables de entorno
 

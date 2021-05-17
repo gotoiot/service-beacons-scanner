@@ -1,9 +1,9 @@
 {
     "FAKE_SCAN": true,
-    "MAX_SCAN_TICK": 10,
-    "MIN_SCAN_TICK": 1,
-    "RUN_FLAG": false,
-    "SCAN_TICK": 3,
+    "MAX_SCAN_TICK": 20,
+    "MIN_SCAN_TICK": 5,
+    "RUN_FLAG": true,
+    "SCAN_TICK": 10,
     "BEACONS_LIST_CAPACITY": 20,
     "UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
     "EVENTS_TO_OMIT": "BaseEvent, IBeaconRead"
