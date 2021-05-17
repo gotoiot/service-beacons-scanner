@@ -6,7 +6,7 @@ from flask import Flask, jsonify
 from flask_restful import Api
 from flask_gzip import Gzip
 
-from config import PORT, ENV, config_get_current_settings_as_str
+from config import PORT, ENV, config_get_current_settings_as_list
 from log import error, warn, info, debug
 from ibeacon_scanner.resources import ibeacon_add_http_resources_to_api
 from ibeacon_scanner.services import ibeacon_init_scanner, ibeacon_stop_scanner
@@ -50,7 +50,7 @@ def after_request(response):
 @application.route("/status", methods=['GET'])
 def status():
     return jsonify({
-        "service_name": "ble-service",
+        "service_name": "beacons-scanner",
         "status": "running",
         "env": ENV,
     })
@@ -72,11 +72,12 @@ def _show_welcome_message():
                    ╠╩╗ ║  ║╣   ╚═╗ ║╣  ╠╦╝ ╚╗╔╚ ║ ║   ║╣ 
                    ╚═╝ ╩═ ╚═╝  ╚═╝ ╚══ ╩╚═  ╚╝  ╩ ╚══ ╚═╝
     \n"""
-    config_settings = config_get_current_settings_as_str(value_prefix="# ")
+    settings_list = config_get_current_settings_as_list()
     print(welcome_message)
     print(f"\n{'#' * 80}\n")
-    print(config_settings)
-    print(f"{'#' * 80}\n\n")
+    for setting in settings_list:
+        print(f"# {setting}")
+    print(f"\n{'#' * 80}\n\n")
 
 
 def _init_application():

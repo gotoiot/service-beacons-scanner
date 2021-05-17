@@ -79,60 +79,68 @@ La lectura de los beacons se realiza en un proceso aparte y cuando se produce un
 
 Cuando se recibe una nueva configuración para el scanner por HTTP, si los datos son correctos, la aplicación guarda los nuevos cambios en el archivo  `_storage/settings.json` y actualiza el funcionamiento.
 
-### Configuración del iBeacon Scanner
+### Configuración de la aplicación
 
-La configuración del scanner está alojada en el archivo `_storage/settings.json`. Podés cambiar la configuración escribiendo en este archivo o a través del endpoint `ibeacon_scanner/settings` podés hacer un GET para leer la configuración actual y un PUT para cambiar el funcionamiento.
-
-Si por casualidad llegás a borrar la configuración del scanner, podés copiar y modificar esta:
+La configuración de toda la aplicación está alojada en el archivo `_storage/settings.json`. Podés cambiarla escribiendo en este archivo directamente. Si por casualidad llegás a borrar la configuración, podés copiar y modificar esta:
 
 ```json
 {
-    "FAKE_SCAN": true,
-    "MAX_SCAN_TICK": 10,
-    "MIN_SCAN_TICK": 1,
+    "UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee",
     "RUN_FLAG": false,
     "SCAN_TICK": 3,
+    "MIN_SCAN_TICK": 1,
+    "MAX_SCAN_TICK": 10,
+    "FAKE_SCAN": true,
     "BEACONS_LIST_CAPACITY": 20,
-    "UUID_FILTER": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee"
+    "EVENTS_TO_OMIT": "BaseEvent, IBeaconRead"
 }
 ```
 
-### Funcionamiento del scanner
-
-El scanner se inicializa con la información alojada en la configuración. En la inicialización, si la configuración `RUN_FLAG` es `true` automáticamente se comenzará el scaneo de beacons. Además en la inicialización se proporcionan los siguientes datos:
+Los parámetros de configuración significan lo siguiente:
 
 * **UUID_FILTER**: Filtro para solamente escanear los beacons que tengan tal UUID.
+* **RUN FLAG**: Flag que determina si se deben realizar lecturas de beacons o no.
 * **SCAN_TICK**: Valor expresado en segundos que determina cada cuanto tiempo se va a realizar la lectura de beacons.
 * **MAX_SCAN_TICK**: Valor máximo admisible expresado en segundos en la lectura de beacons.
 * **MIN_SCAN_TICK**: Valor mínimo admisible expresado en segundos en la lectura de beacons.
-* **FAKE_SCAN**: Flag que determina si las lecturas se realizan por a través del Bluetooth del host o de manera simulada.
+* **FAKE_SCAN**: Flag que determina si las lecturas se realizan a través del Bluetooth del sistema o de manera simulada.
+* **BEACONS_LIST_CAPACITY**: Capacidad maxima de lectura de beacons cercanos
+* **EVENTS_TO_OMIT**: La lista de eventos que no se publicaran en caso que sucedan.
+
+### Variables de entorno
+
+Si querés modificar algúna configuración como variable de entorno podés modificar el archivo `env`. Por lo general la configuración por defecto funciona sin necesidad que la modifiques.
 
 ### Interfaz HTTP
 
-A través de la interfaz HTTP se puede acceder a todos los recursos del servicio. A continuación podés encontrar cada uno de los endpoints con los métodos que acepta.
+A través de la interfaz HTTP podés acceder a todos los recursos del servicio. A continuación están los detalles de cada uno de los endpoints con los métodos que acepta.
 
-* **Obtener el estado del servicio**
-    * **URL**: http://localhost:5000/status
-    * **METHOD**: GET
-* **Obtener la info de los ibeacons**
-    * **URL**: http://localhost:5000/ibeacon_scanner/beacons_data
-    * **METHOD**: GET
-* **Obtener los settings del scanner de ibeacons**
-    * **URL**: http://localhost:5000/ibeacon_scanner/settings
-    * **METHOD**: GET
-* **Cambiar los settings del scanner de ibeacons**
-    * **URL**: http://localhost:5000/ibeacon_scanner/settings
-    * **METHOD**: PUT
-    * **BODY**: {"uuid_filter": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee", "scan_tick": 3, "run_flag": true, "fake_scan": true}
-* **Detener el scanner de ibeacons**
+Obtener el estado del servicio
+* **URL**: http://localhost:5000/status
+* **METHOD**: GET
+
+Obtener la info de los ibeacons
+* **URL**: http://localhost:5000/ibeacon_scanner/beacons_data
+* **METHOD**: GET
+
+Obtener los settings del scanner de ibeacons
+* **URL**: http://localhost:5000/ibeacon_scanner/settings
+* **METHOD**: GET
+
+Cambiar los settings del scanner de ibeacons
+* **URL**: http://localhost:5000/ibeacon_scanner/settings
+* **METHOD**: PUT
+* **BODY**: {"uuid_filter": "ffffffff-bbbb-cccc-dddd-eeeeeeeeeeee", "scan_tick": 3, "run_flag": true, "fake_scan": true}
+
+Detener el scanner de ibeacons
     * **URL**: http://localhost:5000/ibeacon_scanner/stop
     * **METHOD**: POST
     * **BODY**: {}
-* **Iniciar el scanner de ibeacons**
+
+Iniciar el scanner de ibeacons
     * **URL**: http://localhost:5000/ibeacon_scanner/start
     * **METHOD**: POST
     * **BODY**: {}    
-
 
 ### Testing
 

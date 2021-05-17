@@ -1,11 +1,6 @@
 from log import *
-from config import *
+from config import EVENTS_TO_OMIT
 from event.models import BaseEvent
-
-
-BLACK_LIST_EVENTS = [
-    'IBeaconRead'
-]
 
 
 def publish_event(event):
@@ -13,7 +8,8 @@ def publish_event(event):
         error("Event is not instance of event")
         return
     event_class = event.__class__.__name__
-    if event_class in BLACK_LIST_EVENTS:
+    events_to_omit = EVENTS_TO_OMIT.replace(" ", "").split(",")
+    if event_class in events_to_omit:
         return
-    info(f"Publishing event '{str(event)}'")
+    info(f"Publishing event '{event.to_json()}'")
         

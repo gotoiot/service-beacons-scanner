@@ -14,7 +14,6 @@ if not os.path.exists(LOCAL_SETTINGS_FILE):
     print("LOCAL_SETTINGS_FILE not specified")
     sys.exit(1)
 
-
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
 LOG_FORMAT = os.getenv('LOG_FORMAT', '[ %(levelname)5s ] - %(message)s')
 PORT = int(os.getenv('PORT', 5000))
@@ -42,6 +41,13 @@ def _write_local_config(**kwargs):
     return config_data
 
 
+def _set_module_attributes(attributes):
+    attributes = uppercase_dict_keys(attributes)
+    this_module = _get_this_module()
+    for key, value in attributes.items():
+        setattr(this_module, key, value)
+
+
 def uppercase_dict_keys(base_dict):
     out_dict = {}
     for k, v in base_dict.items():
@@ -58,13 +64,6 @@ def lowercase_dict_keys(base_dict):
             v = lowercase_dict_keys(v)
         out_dict[k.lower()] = v
     return out_dict
-
-
-def _set_module_attributes(attributes):
-    attributes = uppercase_dict_keys(attributes)
-    this_module = _get_this_module()
-    for key, value in attributes.items():
-        setattr(this_module, key, value)
 
 
 def config_read():
@@ -85,8 +84,8 @@ def config_write(**kwargs):
     return new_config_data
 
 
-def config_get_current_settings_as_str(value_prefix=" * "):
-    current_data = ""
+def config_get_current_settings_as_list():
+    settings_list = []
     config_data = config_read()
     variables_to_show = list(config_data.keys()) + [
         'ENV',
@@ -96,8 +95,8 @@ def config_get_current_settings_as_str(value_prefix=" * "):
         ]
     this_module = _get_this_module()
     for key in sorted(variables_to_show):
-        current_data += f"{value_prefix}{key} = {getattr(this_module, key)}\n"
-    return current_data
+        settings_list.append(f"{key} = {getattr(this_module, key)}")
+    return settings_list
 
 
 def config_synchronize():
