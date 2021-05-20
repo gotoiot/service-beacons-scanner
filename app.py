@@ -67,10 +67,8 @@ def _show_welcome_message():
         |  $$$$$$|  $$$$$$/ |  $$$$|  $$$$$$/       /$$$$$|  $$$$$$| $$   
          \______/ \______/   \___/  \______/       |______/\______/|__/   
 
-
-                   ╔╗  ╦  ╔═╗  ╔═  ╔══ ╦═╗ ╦  ╦ ╦ ╔══ ╔═╗
-                   ╠╩╗ ║  ║╣   ╚═╗ ║╣  ╠╦╝ ╚╗╔╚ ║ ║   ║╣ 
-                   ╚═╝ ╩═ ╚═╝  ╚═╝ ╚══ ╩╚═  ╚╝  ╩ ╚══ ╚═╝
+                        SERVICE BEACONS SCANNER
+                        -----------------------
     \n"""
     settings_list = config_get_current_settings_as_list()
     print(welcome_message)
