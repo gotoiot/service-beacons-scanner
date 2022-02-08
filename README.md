@@ -7,7 +7,9 @@ Service Beacons Scanner
 
 *Ayudaría mucho si apoyaras este proyecto con una ⭐ en Github!*
 
-`Bluetooth` es un protocolo que sirve para crear redes personales de manera inalámbrica en la banda de 2.4 Ghz. `BLE` es la version low energy del protocolo Bluetooth orientada a dispositivos de bajo consumo. Las comunicaciones dentro de BLE pueden realizarse bajo el esquema `central-peripheral` o bien `broadcaster-observer`.
+`Bluetooth` es un protocolo que sirve para crear redes personales de manera inalámbrica en la banda de 2.4 Ghz. `BLE` es la version low energy del protocolo Bluetooth orientada a dispositivos de bajo consumo. Las comunicaciones dentro de BLE pueden realizarse bajo el esquema de `Advertising` o bien a través de `Connections`.
+
+Dentro de las comunicaciones mediante el mecanismo de Advertising de Bluetooth Low Energy existe una implementación denominada `Beacons`, en la que dispositivos emiten periódicamente una señal que contiene información propia que otros dispositivos dentro del rango de cobertura pueden leer y actuar en consecuencia. Dentro de los beacons existen distintos protocolos, los más conocidos son `iBeacon` desarrollado por Apple y `Eddystone` desarrollado por Google, aunque también existen otras implementaciones.`Bluetooth` es un protocolo que sirve para crear redes personales de manera inalámbrica en la banda de 2.4 Ghz. `BLE` es la version low energy del protocolo Bluetooth orientada a dispositivos de bajo consumo. Las comunicaciones dentro de BLE pueden realizarse bajo el esquema `central-peripheral` o bien `broadcaster-observer`.
 
 Dentro del tipo broadcaster-observer existe un subtipo de dispositivos que se comunican a través de paquetes `beacons`, emitiendo información periódica que otros dispositivos pueden capturar y reaccionar en consecuencia (observers). Dentro de los beacons existen distintos protocolos de comunicación. Los protocolos `iBeacon` desarrollado por Apple y `Eddystone` desarrollado por Google, son los más dominantes.
 
